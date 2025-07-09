@@ -15,8 +15,20 @@ def get_random_question(file_path):
 
 def ask_question(url, question):
     data = {"question": question}
-    response = requests.post(url, json=data)
-    return response.json()
+    try:
+        response = requests.post(url, json=data)
+        response.raise_for_status()  # Raises exception for HTTP 4xx/5xx
+
+        try:
+            return response.json()
+        except requests.exceptions.JSONDecodeError:
+            print("❌ Error: Response is not valid JSON.")
+            print("Raw response:", response.text)
+            return {"answer": "Error: Response is not valid JSON."}
+
+    except requests.exceptions.RequestException as e:
+        print("❌ Request failed:", e)
+        return {"answer": f"Error: {e}"}
 
 
 def send_feedback(url, conversation_id, feedback):
@@ -34,7 +46,7 @@ def main():
     )
     args = parser.parse_args()
 
-    base_url = "http://localhost:5000"
+    base_url = "http://localhost:5001"
     csv_file = "./data/ground-truth-retrieval.csv"
 
     print("Welcome to the interactive question-answering app!")

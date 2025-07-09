@@ -23,38 +23,52 @@ PG_PORT = os.getenv("POSTGRES_PORT")
 def create_api_key():
     auth = (GRAFANA_USER, GRAFANA_PASSWORD)
     headers = {"Content-Type": "application/json"}
-    payload = {
-        "name": "ProgrammaticKey",
-        "role": "Admin",
-    }
-    response = requests.post(
-        f"{GRAFANA_URL}/api/auth/keys", auth=auth, headers=headers, json=payload
+
+    # Step 1: Try to find existing service account
+    sa_list_response = requests.get(f"{GRAFANA_URL}/api/serviceaccounts", auth=auth)
+    if sa_list_response.status_code != 200:
+        print("Failed to list service accounts:", sa_list_response.text)
+        return None
+
+    service_account_id = None
+    for sa in sa_list_response.json():
+        if sa["name"] == "fitness-assistant-service":
+            service_account_id = sa["id"]
+            print(f"Found existing service account with ID: {service_account_id}")
+            break
+
+    # Step 2: If not found, create one
+    if not service_account_id:
+        payload = {"name": "fitness-assistant-service"}
+        sa_create_response = requests.post(
+            f"{GRAFANA_URL}/api/serviceaccounts",
+            auth=auth,
+            headers=headers,
+            json=payload,
+        )
+        if sa_create_response.status_code == 200:
+            service_account_id = sa_create_response.json()["id"]
+            print(f"Created service account with ID: {service_account_id}")
+        else:
+            print("Failed to create service account:", sa_create_response.text)
+            return None
+
+    # Step 3: Create token for the service account
+    token_payload = {"name": "fitness-token"}
+    token_response = requests.post(
+        f"{GRAFANA_URL}/api/serviceaccounts/{service_account_id}/tokens",
+        auth=auth,
+        headers=headers,
+        json=token_payload,
     )
 
-    if response.status_code == 200:
-        print("API key created successfully")
-        return response.json()["key"]
-
-    elif response.status_code == 409:  # Conflict, key already exists
-        print("API key already exists, updating...")
-        # Find the existing key
-        keys_response = requests.get(f"{GRAFANA_URL}/api/auth/keys", auth=auth)
-        if keys_response.status_code == 200:
-            for key in keys_response.json():
-                if key["name"] == "ProgrammaticKey":
-                    # Delete the existing key
-                    delete_response = requests.delete(
-                        f"{GRAFANA_URL}/api/auth/keys/{key['id']}", auth=auth
-                    )
-                    if delete_response.status_code == 200:
-                        print("Existing key deleted")
-                        # Create a new key
-                        return create_api_key()
-        print("Failed to update API key")
-        return None
+    if token_response.status_code == 200:
+        print("API token created successfully")
+        return token_response.json()["key"]
     else:
-        print(f"Failed to create API key: {response.text}")
+        print("Failed to create token:", token_response.text)
         return None
+
 
 
 def create_or_update_datasource(api_key):

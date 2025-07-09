@@ -6,11 +6,11 @@ name = "pypi"
 [packages]
 openai = "*"
 scikit-learn = "*"
-pandas = "*"
 flask = "*"
 psycopg2-binary = "*"
 python-dotenv = "*"
 gunicorn = "*"
+pandas = "*"
 
 [dev-packages]
 tqdm = "*"
