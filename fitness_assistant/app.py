@@ -1,4 +1,4 @@
-import uuid
+import uuid # 用于生成唯一的conversation ID
 
 from flask import Flask, request, jsonify
 
@@ -7,9 +7,12 @@ from rag import rag
 import db
 
 app = Flask(__name__)
+# 接收一个问题，调用 rag 模块处理，并返回答案。
+# 接收用户的反馈，并保存
 
 
 @app.route("/question", methods=["POST"])
+# 定义一个路由 /question，只接受 POST 请求，用于接收用户问题
 def handle_question():
     data = request.json
     question = data["question"]
